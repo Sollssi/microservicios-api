@@ -25,10 +25,10 @@ Al finalizar este taller, los estudiantes serán capaces de:
 - Configuración inicial y creación de rama de trabajo
 - Migraciones básicas
 
-### Bloque 2: Modelos y Relaciones
+### Bloque 2: Modelos y Datos
 - Creación de modelos
-- Relaciones entre modelos
-- Seeders y Factory
+- Operaciones CRUD básicas
+- Métodos Eloquent fundamentales
 
 ### Descanso
 
@@ -307,7 +307,7 @@ return new class extends Migration
 
 ---
 
-## Bloque 2: Modelos y Relaciones
+## Bloque 2: Modelos y Datos
 
 ### 2.1 Introducción a los Modelos Eloquent
 
@@ -371,13 +371,116 @@ class Category extends Model
 
 ### 2.2 Operaciones CRUD Básicas
 
-Vamos a crear un archivo PHP simple para practicar operaciones básicas:
+#### Métodos Fundamentales de Eloquent
+
+Eloquent proporciona métodos intuitivos que simplifican las operaciones de base de datos. Aquí están los más importantes:
+
+**1. create() - Crear nuevo registro**
+```php
+// Eloquent
+$product = Product::create([
+    'name' => 'iPhone 15',
+    'price' => 999.99,
+    'stock' => 50
+]);
+
+// Equivalente SQL
+// INSERT INTO products (name, price, stock, created_at, updated_at) 
+// VALUES ('iPhone 15', 999.99, 50, NOW(), NOW())
+```
+
+**2. firstOrCreate() - Buscar o crear si no existe**
+```php
+// Eloquent
+$category = Category::firstOrCreate(
+    ['slug' => 'electronics'], // Condición de búsqueda
+    ['name' => 'Electronics', 'color' => '#007bff'] // Datos adicionales si se crea
+);
+
+// Equivalente SQL
+// SELECT * FROM categories WHERE slug = 'electronics' LIMIT 1
+// Si no existe:
+// INSERT INTO categories (slug, name, color, created_at, updated_at) 
+// VALUES ('electronics', 'Electronics', '#007bff', NOW(), NOW())
+```
+
+**3. updateOrCreate() - Actualizar o crear si no existe**
+```php
+// Eloquent
+$product = Product::updateOrCreate(
+    ['sku' => 'IP15-PRO'], // Condición de búsqueda
+    ['name' => 'iPhone 15 Pro', 'price' => 1199.99] // Datos a actualizar/crear
+);
+
+// Equivalente SQL
+// SELECT * FROM products WHERE sku = 'IP15-PRO' LIMIT 1
+// Si existe: UPDATE products SET name = 'iPhone 15 Pro', price = 1199.99, updated_at = NOW() WHERE sku = 'IP15-PRO'
+// Si no existe: INSERT INTO products (sku, name, price, created_at, updated_at) VALUES (...)
+```
+
+**4. find() - Buscar por ID**
+```php
+// Eloquent
+$product = Product::find(1);
+$products = Product::find([1, 2, 3]); // Múltiples IDs
+
+// Equivalente SQL
+// SELECT * FROM products WHERE id = 1 LIMIT 1
+// SELECT * FROM products WHERE id IN (1, 2, 3)
+```
+
+**5. save() - Guardar modelo (crear o actualizar)**
+```php
+// Eloquent - Crear nuevo
+$product = new Product();
+$product->name = 'New Product';
+$product->price = 49.99;
+$product->save();
+
+// Eloquent - Actualizar existente
+$product = Product::find(1);
+$product->price = 59.99;
+$product->save();
+
+// Equivalente SQL - Crear
+// INSERT INTO products (name, price, created_at, updated_at) VALUES ('New Product', 49.99, NOW(), NOW())
+
+// Equivalente SQL - Actualizar
+// UPDATE products SET price = 59.99, updated_at = NOW() WHERE id = 1
+```
+
+**6. where() - Filtrar con condiciones**
+```php
+// Eloquent
+$products = Product::where('price', '>', 100)->get();
+$products = Product::where('category_id', 1)->where('stock', '>', 0)->get();
+$product = Product::where('sku', 'IP15-PRO')->first();
+
+// Equivalente SQL
+// SELECT * FROM products WHERE price > 100
+// SELECT * FROM products WHERE category_id = 1 AND stock > 0
+// SELECT * FROM products WHERE sku = 'IP15-PRO' LIMIT 1
+```
+
+**Diferencias clave entre create() y save():**
+- `create()`: Método estático, acepta array, crea y retorna inmediatamente
+- `save()`: Método de instancia, más control sobre el proceso, útil para lógica previa
+
+**Cuándo usar cada método:**
+- `create()`: Crear registros rápidamente con datos conocidos
+- `firstOrCreate()`: Evitar duplicados basados en criterios específicos
+- `updateOrCreate()`: Operaciones "upsert" (update o insert)
+- `find()`: Búsquedas rápidas por ID
+- `save()`: Cuando necesitas lógica antes de guardar
+- `where()`: Filtrar resultados con condiciones personalizadas
+
+Vamos a crear un archivo PHP simple para practicar estas operaciones básicas:
 
 **Crear archivo de práctica:**
 
 ```bash
-# Crear archivo para prácticas
-touch ./practica_modelos.php
+# Crear archivo para practicar métodos Eloquent
+touch ./practica_eloquent_methods.php
 ```
 
 **Contenido del archivo de práctica:**
@@ -392,563 +495,198 @@ $app = require_once 'bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
 use App\Models\Category;
-use App\Models\Product;
-use App\Models\Customer;
 
-echo "=== PRÁCTICA DE MODELOS ELOQUENT ===\n\n";
+echo "=== PRÁCTICA DE MÉTODOS ELOQUENT CON CATEGORY ===\n\n";
 
-// 1. CREAR (CREATE)
-echo "1. CREANDO CATEGORÍAS:\n";
+// 1. MÉTODO CREATE - Crear nueva categoría
+echo "1. MÉTODO CREATE:\n";
 
-$category1 = Category::create([
-    'name' => 'Electrónicos',
-    'slug' => 'electronicos',
-    'description' => 'Productos electrónicos y tecnología',
-    'color' => '#007bff',
+$newCategory = Category::create([
+    'name' => 'Libros',
+    'slug' => 'libros',
+    'description' => 'Libros y literatura',
+    'color' => '#6f42c1',
     'is_active' => true
 ]);
 
-$category2 = new Category();
-$category2->name = 'Ropa';
-$category2->slug = 'ropa';
-$category2->description = 'Vestimenta y accesorios';
-$category2->color = '#28a745';
-$category2->is_active = true;
-$category2->save();
+echo "✓ Categoría creada con create(): {$newCategory->name} (ID: {$newCategory->id})\n\n";
 
-echo "Categoría 1 creada: {$category1->name} (ID: {$category1->id})\n";
-echo "Categoría 2 creada: {$category2->name} (ID: {$category2->id})\n\n";
+// 2. MÉTODO FIND - Buscar por ID
+echo "2. MÉTODO FIND:\n";
 
-// 2. LEER (READ)
-echo "2. LEYENDO CATEGORÍAS:\n";
-
-// Obtener todas las categorías
-$allCategories = Category::all();
-echo "Total de categorías: " . $allCategories->count() . "\n";
-
-// Obtener por ID
-$category = Category::find(1);
-if ($category) {
-    echo "Categoría con ID 1: {$category->name}\n";
+$foundCategory = Category::find($newCategory->id);
+if ($foundCategory) {
+    echo "✓ Categoría encontrada: {$foundCategory->name} - {$foundCategory->slug}\n";
 }
 
-// Buscar por campo
-$electronics = Category::where('slug', 'electronicos')->first();
-if ($electronics) {
-    echo "Categoría de electrónicos: {$electronics->name}\n";
+// Buscar múltiples IDs
+$multipleCategories = Category::find([1, 2, $newCategory->id]);
+echo "✓ Encontradas " . $multipleCategories->count() . " categorías por ID\n\n";
+
+// 3. MÉTODO WHERE - Filtrar con condiciones
+echo "3. MÉTODO WHERE:\n";
+
+// Buscar por slug
+$categoryBySlug = Category::where('slug', 'libros')->first();
+if ($categoryBySlug) {
+    echo "✓ Categoría encontrada por slug: {$categoryBySlug->name}\n";
 }
 
+// Buscar categorías activas
+$activeCategories = Category::where('is_active', true)->get();
+echo "✓ Categorías activas encontradas: " . $activeCategories->count() . "\n";
+
+// Buscar con múltiples condiciones
+$specificCategories = Category::where('is_active', true)
+    ->where('name', 'like', '%electrón%')
+    ->get();
+echo "✓ Categorías que contienen 'electrón': " . $specificCategories->count() . "\n\n";
+
+// 4. MÉTODO FIRSTORCREATE - Buscar o crear si no existe
+echo "4. MÉTODO FIRSTORCREATE:\n";
+
+// Intentar buscar una categoría que ya existe
+$existingCategory = Category::firstOrCreate(
+    ['slug' => 'libros'], // Condición de búsqueda
+    ['name' => 'Literatura', 'color' => '#ff0000'] // Datos adicionales (no se usarán)
+);
+echo "✓ firstOrCreate con slug existente: {$existingCategory->name} (no se creó nueva)\n";
+
+// Buscar o crear una categoría nueva
+$newOrExisting = Category::firstOrCreate(
+    ['slug' => 'musica'], // Condición de búsqueda
+    [
+        'name' => 'Música',
+        'description' => 'Instrumentos y equipos musicales',
+        'color' => '#fd7e14',
+        'is_active' => true
+    ] // Datos para crear si no existe
+);
+
+if ($newOrExisting->wasRecentlyCreated) {
+    echo "✓ Nueva categoría creada: {$newOrExisting->name}\n";
+} else {
+    echo "✓ Categoría existente encontrada: {$newOrExisting->name}\n";
+}
 echo "\n";
 
-// 3. ACTUALIZAR (UPDATE)
-echo "3. ACTUALIZANDO CATEGORÍAS:\n";
+// 5. MÉTODO UPDATEORCREATE - Actualizar o crear
+echo "5. MÉTODO UPDATEORCREATE:\n";
 
-$category1->description = 'Productos de tecnología y electrónicos actualizados';
-$category1->save();
-echo "Descripción de {$category1->name} actualizada\n";
+// Actualizar categoría existente
+$updatedCategory = Category::updateOrCreate(
+    ['slug' => 'musica'], // Condición de búsqueda
+    [
+        'name' => 'Música y Audio',
+        'description' => 'Instrumentos musicales, equipos de audio y accesorios',
+        'color' => '#e83e8c'
+    ] // Datos a actualizar/crear
+);
 
-// Actualización masiva
-Category::where('slug', 'ropa')->update(['color' => '#ffc107']);
-echo "Color de categoría ropa actualizado\n\n";
+echo "✓ updateOrCreate en categoría existente: {$updatedCategory->name}\n";
 
-// 4. ELIMINAR (DELETE)
-echo "4. OPERACIONES DE ELIMINACIÓN:\n";
+// Crear nueva categoría con updateOrCreate
+$newCategoryUpdate = Category::updateOrCreate(
+    ['slug' => 'jardineria'], // No existe, se creará
+    [
+        'name' => 'Jardinería',
+        'description' => 'Plantas, herramientas y accesorios de jardín',
+        'color' => '#28a745',
+        'is_active' => true
+    ]
+);
 
-// Eliminar por modelo
-$categoryToDelete = Category::where('slug', 'ropa')->first();
-if ($categoryToDelete) {
-    $categoryToDelete->delete();
-    echo "Categoría 'Ropa' eliminada\n";
+echo "✓ Nueva categoría con updateOrCreate: {$newCategoryUpdate->name}\n\n";
+
+// 6. MÉTODO SAVE - Crear con instancia
+echo "6. MÉTODO SAVE:\n";
+
+// Crear nueva instancia y guardar
+$manualCategory = new Category();
+$manualCategory->name = 'Arte y Manualidades';
+$manualCategory->slug = 'arte-manualidades';
+$manualCategory->description = 'Materiales para arte y proyectos creativos';
+$manualCategory->color = '#17a2b8';
+$manualCategory->is_active = true;
+
+$manualCategory->save();
+echo "✓ Categoría creada con save(): {$manualCategory->name} (ID: {$manualCategory->id})\n";
+
+// Actualizar con save()
+$manualCategory->description = 'Materiales para arte, manualidades y proyectos DIY';
+$manualCategory->save();
+echo "✓ Categoría actualizada con save(): nueva descripción guardada\n\n";
+
+// 7. RESUMEN FINAL
+echo "7. RESUMEN DE CATEGORÍAS CREADAS:\n";
+
+$allCategories = Category::orderBy('created_at', 'desc')->get();
+foreach ($allCategories as $index => $category) {
+    $status = $category->is_active ? '✅ Activa' : '❌ Inactiva';
+    echo sprintf(
+        "%d. %s (%s) - %s - Color: %s %s\n",
+        $index + 1,
+        $category->name,
+        $category->slug,
+        $category->color,
+        $status,
+        $category->created_at->diffForHumans()
+    );
 }
 
-echo "\n";
-
-// 5. LISTAR CATEGORÍAS RESTANTES
-echo "5. CATEGORÍAS FINALES:\n";
-$finalCategories = Category::all();
-foreach ($finalCategories as $cat) {
-    echo "- {$cat->name} ({$cat->slug}) - Color: {$cat->color}\n";
-}
-
-echo "\n=== FIN DE LA PRÁCTICA ===\n";
+echo "\n=== TOTAL DE CATEGORÍAS: " . $allCategories->count() . " ===\n";
+echo "=== FIN DE LA PRÁCTICA ===\n";
 ```
 
 **Ejecutar el archivo de práctica:**
 
 ```bash
-php practica_modelos.php
+php practica_eloquent_methods.php
 ```
 
-### 2.3 Relaciones entre Modelos
+**Resultados esperados del script:**
+- Demostración práctica de cada método Eloquent
+- Ejemplos de diferentes tipos de búsquedas
+- Comparación entre métodos de creación
+- Listado final de todas las categorías creadas
 
-Las relaciones son una de las características más poderosas de Eloquent. Vamos a implementar relaciones entre nuestras tablas.
+#### Ejemplo de salida esperada:
 
-#### Paso 1: Modificar la migración de productos para incluir category_id
-
-```bash
-# Crear migración para agregar foreign key
-php artisan make:migration add_category_id_to_products_table
 ```
-
-**Diagrama del modelo con primera relación:**
-
-```mermaid
-erDiagram
-    CATEGORIES {
-        bigint id PK
-        string name
-        string slug UK
-        text description
-        string color
-        boolean is_active
-        timestamp created_at
-        timestamp updated_at
-    }
-    
-    PRODUCTS {
-        bigint id PK
-        string name
-        text description
-        decimal price
-        integer stock
-        boolean is_active
-        bigint category_id FK
-        timestamp created_at
-        timestamp updated_at
-    }
-    
-    CUSTOMERS {
-        bigint id PK
-        string first_name
-        string last_name
-        string email UK
-        string phone
-        date birth_date
-        boolean is_premium
-        timestamp created_at
-        timestamp updated_at
-    }
-    
-    CATEGORIES ||--o{ PRODUCTS : "has many"
-```
-
-**Contenido de la migración:**
-
-```php
-<?php
-
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
-
-return new class extends Migration
-{
-    public function up(): void
-    {
-        Schema::table('products', function (Blueprint $table) {
-            $table->foreignId('category_id')->constrained()->onDelete('cascade');
-        });
-    }
-
-    public function down(): void
-    {
-        Schema::table('products', function (Blueprint $table) {
-            $table->dropForeign(['category_id']);
-            $table->dropColumn('category_id');
-        });
-    }
-};
-```
-
-#### Paso 2: Definir las relaciones en los modelos
-
-**Modelo Category:**
-
-```php
-<?php
-
-namespace App\Models;
-
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-class Category extends Model
-{
-    use HasFactory;
-
-    protected $fillable = [
-        'name',
-        'slug',
-        'description',
-        'color',
-        'is_active'
-    ];
-
-    protected $casts = [
-        'is_active' => 'boolean',
-    ];
-
-    // Relación: Una categoría tiene muchos productos
-    public function products()
-    {
-        return $this->hasMany(Product::class);
-    }
-}
-```
-
-**Modelo Product:**
-
-```php
-<?php
-
-namespace App\Models;
-
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-class Product extends Model
-{
-    use HasFactory;
-
-    protected $fillable = [
-        'name',
-        'description',
-        'price',
-        'stock',
-        'is_active',
-        'category_id'
-    ];
-
-    protected $casts = [
-        'price' => 'decimal:2',
-        'is_active' => 'boolean',
-    ];
-
-    // Relación: Un producto pertenece a una categoría
-    public function category()
-    {
-        return $this->belongsTo(Category::class);
-    }
-}
-```
-
-#### Paso 3: Crear tabla de pedidos para relación muchos a muchos
-
-```bash
-# Crear migración para orders
-php artisan make:migration create_orders_table
-
-# Crear migración para la tabla pivot
-php artisan make:migration create_order_product_table
-```
-
-**Diagrama del modelo completo con relaciones muchos a muchos:**
-
-```mermaid
-erDiagram
-    CATEGORIES {
-        bigint id PK
-        string name
-        string slug UK
-        text description
-        string color
-        boolean is_active
-        timestamp created_at
-        timestamp updated_at
-    }
-    
-    PRODUCTS {
-        bigint id PK
-        string name
-        text description
-        decimal price
-        integer stock
-        boolean is_active
-        bigint category_id FK
-        timestamp created_at
-        timestamp updated_at
-    }
-    
-    CUSTOMERS {
-        bigint id PK
-        string first_name
-        string last_name
-        string email UK
-        string phone
-        date birth_date
-        boolean is_premium
-        timestamp created_at
-        timestamp updated_at
-    }
-    
-    ORDERS {
-        bigint id PK
-        bigint customer_id FK
-        string order_number UK
-        decimal total
-        string status
-        timestamp order_date
-        timestamp created_at
-        timestamp updated_at
-    }
-    
-    ORDER_PRODUCT {
-        bigint id PK
-        bigint order_id FK
-        bigint product_id FK
-        integer quantity
-        decimal unit_price
-        timestamp created_at
-        timestamp updated_at
-    }
-    
-    CATEGORIES ||--o{ PRODUCTS : "has many"
-    CUSTOMERS ||--o{ ORDERS : "has many"
-    ORDERS ||--o{ ORDER_PRODUCT : "has many"
-    PRODUCTS ||--o{ ORDER_PRODUCT : "has many"
-    ORDERS }o--o{ PRODUCTS : "many to many"
-```
-
-**Migración de orders:**
-
-```php
-<?php
-
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
-
-return new class extends Migration
-{
-    public function up(): void
-    {
-        Schema::create('orders', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('customer_id')->constrained()->onDelete('cascade');
-            $table->string('order_number')->unique();
-            $table->decimal('total', 10, 2);
-            $table->enum('status', ['pending', 'processing', 'shipped', 'delivered', 'cancelled']);
-            $table->timestamp('order_date');
-            $table->timestamps();
-        });
-    }
-
-    public function down(): void
-    {
-        Schema::dropIfExists('orders');
-    }
-};
-```
-
-**Migración de la tabla pivot order_product:**
-
-```php
-<?php
-
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
-
-return new class extends Migration
-{
-    public function up(): void
-    {
-        Schema::create('order_product', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('order_id')->constrained()->onDelete('cascade');
-            $table->foreignId('product_id')->constrained()->onDelete('cascade');
-            $table->integer('quantity');
-            $table->decimal('unit_price', 8, 2);
-            $table->timestamps();
-        });
-    }
-
-    public function down(): void
-    {
-        Schema::dropIfExists('order_product');
-    }
-};
-```
-
-### 2.4 Seeders y Factories
-
-Los **seeders** nos permiten poblar la base de datos con datos de prueba de forma automatizada.
-
-#### Crear seeders:
-
-```bash
-# Crear seeders
-php artisan make:seeder CategorySeeder
-php artisan make:seeder ProductSeeder
-php artisan make:seeder CustomerSeeder
-```
-
-**CategorySeeder:**
-
-```php
-<?php
-
-namespace Database\Seeders;
-
-use App\Models\Category;
-use Illuminate\Database\Seeder;
-
-class CategorySeeder extends Seeder
-{
-    public function run(): void
-    {
-        $categories = [
-            [
-                'name' => 'Electrónicos',
-                'slug' => 'electronicos',
-                'description' => 'Productos electrónicos y tecnología',
-                'color' => '#007bff',
-                'is_active' => true
-            ],
-            [
-                'name' => 'Ropa y Accesorios',
-                'slug' => 'ropa-accesorios',
-                'description' => 'Vestimenta y accesorios de moda',
-                'color' => '#28a745',
-                'is_active' => true
-            ],
-            [
-                'name' => 'Hogar y Jardín',
-                'slug' => 'hogar-jardin',
-                'description' => 'Artículos para el hogar y jardinería',
-                'color' => '#ffc107',
-                'is_active' => true
-            ],
-            [
-                'name' => 'Deportes',
-                'slug' => 'deportes',
-                'description' => 'Equipos y accesorios deportivos',
-                'color' => '#dc3545',
-                'is_active' => true
-            ]
-        ];
-
-        foreach ($categories as $categoryData) {
-            Category::create($categoryData);
-        }
-    }
-}
-```
-
-**ProductSeeder:**
-
-```php
-<?php
-
-namespace Database\Seeders;
-
-use App\Models\Product;
-use App\Models\Category;
-use Illuminate\Database\Seeder;
-
-class ProductSeeder extends Seeder
-{
-    public function run(): void
-    {
-        $electronics = Category::where('slug', 'electronicos')->first();
-        $clothing = Category::where('slug', 'ropa-accesorios')->first();
-        $home = Category::where('slug', 'hogar-jardin')->first();
-        $sports = Category::where('slug', 'deportes')->first();
-
-        $products = [
-            // Electrónicos
-            [
-                'name' => 'iPhone 15 Pro',
-                'description' => 'Smartphone Apple con pantalla de 6.1 pulgadas',
-                'price' => 999.99,
-                'stock' => 50,
-                'is_active' => true,
-                'category_id' => $electronics->id
-            ],
-            [
-                'name' => 'Laptop HP Pavilion',
-                'description' => 'Laptop con procesador Intel i7 y 16GB RAM',
-                'price' => 799.99,
-                'stock' => 25,
-                'is_active' => true,
-                'category_id' => $electronics->id
-            ],
-            
-            // Ropa
-            [
-                'name' => 'Camiseta Básica',
-                'description' => 'Camiseta de algodón 100% en varios colores',
-                'price' => 19.99,
-                'stock' => 100,
-                'is_active' => true,
-                'category_id' => $clothing->id
-            ],
-            [
-                'name' => 'Jeans Clásicos',
-                'description' => 'Pantalón jean de corte clásico',
-                'price' => 49.99,
-                'stock' => 75,
-                'is_active' => true,
-                'category_id' => $clothing->id
-            ],
-            
-            // Hogar
-            [
-                'name' => 'Aspiradora Robot',
-                'description' => 'Aspiradora automática con WiFi',
-                'price' => 299.99,
-                'stock' => 20,
-                'is_active' => true,
-                'category_id' => $home->id
-            ],
-            
-            // Deportes
-            [
-                'name' => 'Balón de Fútbol',
-                'description' => 'Balón oficial de fútbol profesional',
-                'price' => 39.99,
-                'stock' => 40,
-                'is_active' => true,
-                'category_id' => $sports->id
-            ]
-        ];
-
-        foreach ($products as $productData) {
-            Product::create($productData);
-        }
-    }
-}
-```
-
-**Actualizar DatabaseSeeder:**
-
-```php
-<?php
-
-namespace Database\Seeders;
-
-use Illuminate\Database\Seeder;
-
-class DatabaseSeeder extends Seeder
-{
-    public function run(): void
-    {
-        $this->call([
-            CategorySeeder::class,
-            ProductSeeder::class,
-        ]);
-    }
-}
-```
-
-**Ejecutar los seeders:**
-
-```bash
-# Ejecutar migraciones y seeders
-php artisan migrate --seed
-
-# O solo los seeders
-php artisan db:seed
+=== PRÁCTICA DE MÉTODOS ELOQUENT CON CATEGORY ===
+
+1. MÉTODO CREATE:
+✓ Categoría creada con create(): Libros (ID: 10)
+
+2. MÉTODO FIND:
+✓ Categoría encontrada: Libros - libros
+✓ Encontradas 3 categorías por ID
+
+3. MÉTODO WHERE:
+✓ Categoría encontrada por slug: Libros
+✓ Categorías activas encontradas: 5
+✓ Categorías que contienen 'electrón': 2
+
+4. MÉTODO FIRSTORCREATE:
+✓ firstOrCreate con slug existente: Libros (no se creó nueva)
+✓ Nueva categoría creada: Música
+
+5. MÉTODO UPDATEORCREATE:
+✓ updateOrCreate en categoría existente: Música y Audio
+✓ Nueva categoría con updateOrCreate: Jardinería
+
+6. MÉTODO SAVE:
+✓ Categoría creada con save(): Arte y Manualidades (ID: 11)
+✓ Categoría actualizada con save(): nueva descripción guardada
+
+7. RESUMEN FINAL
+1. Jardinería (jardineria) - #28a745 - Color: #28a745 hace 5 minutos
+2. Música (musica) - #fd7e14 - Color: #fd7e14 hace 10 minutos
+3. Libros (libros) - #6f42c1 - Color: #6f42c1 hace 15 minutos
+4. Electrónicos (electronicos) - #007bff - Color: #007bff hace 20 minutos
+5. Ropa y Accesorios (ropa-accesorios) - #28a745 - Color: #28a745 hace 25 minutos
+=== TOTAL DE CATEGORÍAS: 5 ===
+=== FIN DE LA PRÁCTICA ===
 ```
 
 ---
@@ -1093,9 +831,7 @@ erDiagram
     PRODUCTS {
         bigint id PK
         string name
-        string sku UK
         text description
-        string image_url
         decimal price
         decimal weight
         integer stock
@@ -1277,9 +1013,7 @@ erDiagram
     PRODUCTS {
         bigint id PK
         string name
-        string sku UK
         text description
-        string image_url
         decimal price
         decimal weight
         integer stock
@@ -1546,25 +1280,13 @@ echo "\n";
 // 3. Consultas complejas con relaciones
 echo "3. CONSULTAS COMPLEJAS:\n";
 
-// Productos con sus reseñas
-$productsWithReviews = Product::with(['reviews.customer', 'category'])
-    ->whereHas('reviews')
-    ->get();
-
-echo "Productos con reseñas:\n";
-foreach ($productsWithReviews as $product) {
-    $avgRating = round($product->averageRating(), 1);
-    $reviewsCount = $product->reviewsCount();
-    
-    echo "- {$product->name}\n";
-    echo "  Categoría: {$product->category->name}\n";
-    echo "  Rating promedio: {$avgRating}/5 ({$reviewsCount} reseñas)\n";
-    
-    foreach ($product->reviews as $review) {
-        echo "    * {$review->rating}/5 - {$review->customer->first_name}: \"{$review->comment}\"\n";
-    }
-    echo "\n";
+// SQL: SELECT p.*, c.name as category_name FROM products p JOIN categories c ON p.category_id = c.id
+$productsWithCategory = Product::with('category')->get();
+foreach ($productsWithCategory->take(3) as $product) {
+    echo "- {$product->name} (Categoría: {$product->category->name})\n";
 }
+
+echo "\n";
 
 // 4. Top productos por rating
 echo "4. TOP PRODUCTOS POR RATING:\n";
@@ -1601,123 +1323,44 @@ echo "\n=== FIN DEL CASO PRÁCTICO ===\n";
 
 ## Ejercicios para Practicar
 
-### Ejercicio 1: Sistema de Tags
-Crear un sistema de etiquetas para productos (relación muchos a muchos):
+### Ejercicio 1: Ampliar el modelo Customer
+Agregar campos adicionales al modelo `Customer`:
 
-1. Crear migración para tabla `tags`
-2. Crear tabla pivot `product_tag`
-3. Definir relaciones en los modelos
-4. Crear seeder para tags
-5. Asignar tags a productos
+1. Crear migración para agregar campos:
+   - `address` (text, nullable)
+   - `city` (string, nullable)
+   - `postal_code` (string, nullable)
+   - `country` (string, default 'España')
 
-**Diagrama propuesto para el ejercicio:**
+2. Actualizar el modelo Customer
+3. Crear seeder para clientes con direcciones
+4. Practicar consultas con los nuevos campos
 
-```mermaid
-erDiagram
-    PRODUCTS {
-        bigint id PK
-        string name
-        bigint category_id FK
-    }
-    
-    TAGS {
-        bigint id PK
-        string name
-        string slug UK
-        string color
-        timestamp created_at
-        timestamp updated_at
-    }
-    
-    PRODUCT_TAG {
-        bigint id PK
-        bigint product_id FK
-        bigint tag_id FK
-        timestamp created_at
-        timestamp updated_at
-    }
-    
-    PRODUCTS ||--o{ PRODUCT_TAG : "has many"
-    TAGS ||--o{ PRODUCT_TAG : "has many"
-    PRODUCTS }o--o{ TAGS : "many to many"
-```
+### Ejercicio 2: Sistema de Stock Avanzado
+Extender el sistema de productos con mejor control de stock:
 
-### Ejercicio 2: Sistema de Inventario
-Extender el sistema con control de inventario:
+1. Agregar campos a productos:
+   - `min_stock` (integer, default 5)
+   - `max_stock` (integer, default 100)
+   - `status` (enum: available, out_of_stock, discontinued)
 
-1. Crear tabla `inventory_movements`
-2. Registrar entradas y salidas de stock
-3. Crear métodos para actualizar stock automáticamente
-4. Implementar alertas de stock bajo
+2. Crear métodos en el modelo:
+   - `isLowStock()` - detectar stock bajo
+   - `isOutOfStock()` - detectar sin stock
+   - `updateStock($quantity)` - actualizar stock
 
-**Diagrama propuesto para el ejercicio:**
+3. Crear consultas para:
+   - Productos con stock bajo
+   - Productos más vendidos
+   - Productos descontinuados
 
-```mermaid
-erDiagram
-    PRODUCTS {
-        bigint id PK
-        string name
-        integer stock
-    }
-    
-    INVENTORY_MOVEMENTS {
-        bigint id PK
-        bigint product_id FK
-        string type
-        integer quantity
-        integer stock_before
-        integer stock_after
-        string reason
-        bigint user_id FK
-        timestamp created_at
-        timestamp updated_at
-    }
-    
-    PRODUCTS ||--o{ INVENTORY_MOVEMENTS : "has many"
-```
+### Ejercicio 3: Búsquedas Avanzadas
+Implementar sistema de búsquedas complejas:
 
-### Ejercicio 3: Sistema de Descuentos
-Implementar sistema de descuentos:
-
-1. Crear tabla `discounts`
-2. Aplicar descuentos por categoría o producto específico
-3. Calcular precios con descuento
-4. Validar fechas de vigencia
-
-**Diagrama propuesto para el ejercicio:**
-
-```mermaid
-erDiagram
-    PRODUCTS {
-        bigint id PK
-        string name
-        decimal price
-        bigint category_id FK
-    }
-    
-    CATEGORIES {
-        bigint id PK
-        string name
-    }
-    
-    DISCOUNTS {
-        bigint id PK
-        string name
-        string type
-        decimal value
-        bigint product_id FK
-        bigint category_id FK
-        date start_date
-        date end_date
-        boolean is_active
-        timestamp created_at
-        timestamp updated_at
-    }
-    
-    PRODUCTS ||--o{ DISCOUNTS : "can have"
-    CATEGORIES ||--o{ DISCOUNTS : "can have"
-    CATEGORIES ||--o{ PRODUCTS : "has many"
-```
+1. Crear consultas que combinen múltiples condiciones
+2. Implementar filtros por rango de precios
+3. Buscar productos por texto en nombre y descripción
+4. Ordenar resultados por diferentes criterios
 
 ---
 
@@ -1735,24 +1378,19 @@ erDiagram
    - Creación de modelos
    - Configuración de fillable y casts
    - Operaciones CRUD básicas
-   - Relaciones entre modelos
+   - Métodos fundamentales (create, find, where, save, etc.)
 
-3. **Seeders**:
-   - Poblar base de datos con datos de prueba
-   - Organizar seeders por entidad
-   - Ejecutar seeders de forma selectiva
-
-4. **Mapeo SQL ↔ Eloquent**:
+3. **Mapeo SQL ↔ Eloquent**:
    - Conversión de consultas SQL comunes
    - Uso de Query Builder
-   - Consultas con relaciones
-   - Agregaciones y agrupaciones
+   - Consultas básicas y filtrados
+   - Agregaciones simples
 
-5. **Relaciones**:
-   - One to Many (hasMany/belongsTo)
-   - Many to Many (belongsToMany)
-   - Carga eager loading
-   - Consultas con relaciones
+4. **Modificación de Esquemas**:
+   - Agregar campos a tablas existentes
+   - Modificar tipos de datos
+   - Crear índices para optimización
+   - Gestionar cambios en producción
 
 ### Mejores Prácticas Aprendidas
 
@@ -1797,27 +1435,27 @@ php artisan migrate:fresh --seed
 # Modelos
 php artisan make:model ModelName
 php artisan make:model ModelName -m  # Con migración
-php artisan make:model ModelName -mfs # Con migración, factory y seeder
 
-# Seeders
-php artisan make:seeder SeederName
-php artisan db:seed
-php artisan db:seed --class=SeederName
+# Consultas básicas en tinker
+php artisan tinker
+Model::all()
+Model::find(1)
+Model::where('field', 'value')->get()
 ```
 
 ### Próximos Pasos
-1. Estudiar Factory para generar datos de prueba masivos
-2. Aprender sobre Mutators y Accessors
+1. Estudiar Relaciones entre Modelos (ver tutorial específico)
+2. Aprender Seeders y Factory (ver tutorial específico) 
 3. Implementar Observers para eventos de modelo
 4. Explorar Query Scopes para consultas reutilizables
-5. Practicar con relaciones polimórficas
+5. Practicar con consultas avanzadas y optimización
 
 ---
 
 ## Conclusión
 
-En este taller hemos cubierto los fundamentos del almacenamiento de datos en Laravel, desde las migraciones básicas hasta relaciones complejas y consultas avanzadas. El sistema ORM Eloquent es una herramienta poderosa que facilita enormemente el trabajo con bases de datos.
+En este taller hemos cubierto los fundamentos del almacenamiento de datos en Laravel, desde las migraciones básicas hasta consultas avanzadas con Eloquent. El sistema ORM Eloquent es una herramienta poderosa que facilita enormemente el trabajo con bases de datos.
 
-**Recuerda**: La práctica es clave. Continúa experimentando con diferentes tipos de relaciones y consultas para dominar completamente estas herramientas.
+**Recuerda**: La práctica es clave. Continúa experimentando con diferentes tipos de consultas y migraciones para dominar completamente estas herramientas. Para temas más avanzados como relaciones entre modelos, consulta el tutorial específico sobre ese tema.
 
 ¡Felicitaciones por completar el taller!
